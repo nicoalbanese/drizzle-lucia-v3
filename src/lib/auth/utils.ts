@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getPageSession } from "@/lib/auth/lucia";
+import { validateRequest } from "@/lib/auth/lucia";
 
 export type AuthSession = {
   session: {
@@ -12,21 +12,20 @@ export type AuthSession = {
   } | null;
 };
 export const getUserAuth = async (): Promise<AuthSession> => {
-  const session = await getPageSession();
+  const { session, user } = await validateRequest();
   if (!session) return { session: null };
   return {
     session: {
       user: {
-        id: session.user?.userId,
-        name: session.user?.name,
-        email: session.user?.email,
-        username: session.user?.username,
+        id: user?.id,
+        username: user?.username,
       },
     },
   };
 };
 
 export const checkAuth = async () => {
-  const session = await getPageSession();
+  const { session } = await validateRequest();
+
   if (!session) redirect("/sign-in");
 };

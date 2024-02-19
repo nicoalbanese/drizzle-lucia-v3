@@ -1,30 +1,19 @@
-import { sqliteTable, text, blob } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { DrizzleSQLiteAdapter } from "@lucia-auth/adapter-drizzle";
+import { db } from "..";
 
 export const users = sqliteTable("user", {
-	id: text("id").primaryKey(),
-	// other user attributes
-	name: text("name"),
-	email: text("email"),
-	username: text("username"),
+  id: text("id").notNull().primaryKey(),
+  username: text("username").notNull().unique(),
+  hashedPassword: text("hashed_password").notNull(),
 });
 
-export const sessions = sqliteTable("user_session", {
-	id: text("id").primaryKey(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => users.id),
-	activeExpires: blob("active_expires", {
-		mode: "bigint"
-	}).notNull(),
-	idleExpires: blob("idle_expires", {
-		mode: "bigint"
-	}).notNull()
+export const sessions = sqliteTable("session", {
+  id: text("id").notNull().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  expiresAt: integer("expires_at").notNull(),
 });
 
-export const keys = sqliteTable("user_key", {
-	id: text("id").primaryKey(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => users.id),
-	hashedPassword: text("hashed_password")
-});
+export const adapter = new DrizzleSQLiteAdapter(db, sessions, users);
