@@ -28,7 +28,7 @@ const createSessionAndRedirect = async (userId: string) => {
   const session = await lucia.createSession(userId, {});
   const sessionCookie = lucia.createSessionCookie(session.id);
   updateCookie(sessionCookie);
-  return redirect("/dashboard");
+  // redirect("/dashboard");
 };
 
 export async function signIn(

@@ -24,12 +24,12 @@ export default function SignInPage() {
         <Label htmlFor="email" className="text-muted-foreground">
           Email
         </Label>
-        <Input name="email" id="email" type="email" />
+        <Input name="email" id="email" type="email" required />
         <br />
         <Label htmlFor="password" className="text-muted-foreground">
           Password
         </Label>
-        <Input type="password" name="password" id="password" />
+        <Input type="password" name="password" id="password" required />
         <br />
         <Submit />
       </form>
