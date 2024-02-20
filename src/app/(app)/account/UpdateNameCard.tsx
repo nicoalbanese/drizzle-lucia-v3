@@ -1,35 +1,23 @@
 "use client";
+
 import { AccountCard, AccountCardFooter, AccountCardBody } from "./AccountCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { updateUser } from "@/lib/actions/user";
+import { useEffect } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 
 export default function UpdateNameCard({ name }: { name: string }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const handleSubmit = async (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    const target = event.target as HTMLFormElement;
-    const form = new FormData(target);
-    const { name } = Object.fromEntries(form.entries()) as { name: string };
-    if (name.length < 3) {
-      toast.error("Name must be longer than 3 characters.");
-      return;
-    }
+  const [state, formAction] = useFormState(updateUser, {
+    error: null,
+    success: null,
+  });
 
-    startTransition(async () => {
-      const res = await fetch("/api/account", {
-        method: "PUT",
-        body: JSON.stringify({ name }),
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.status === 200)
-        toast.success("Successfully updated name!");
-      router.refresh();
-    });
-  };
+  useEffect(() => {
+    if (state.success == true) toast.success("Updated User");
+    if (state.error) toast.error("Error", { description: state.error });
+  }, [state]);
 
   return (
     <AccountCard
@@ -39,14 +27,19 @@ export default function UpdateNameCard({ name }: { name: string }) {
           "Please enter your full name, or a display name you are comfortable with.",
       }}
     >
-      <form onSubmit={handleSubmit}>
+      <form action={formAction}>
         <AccountCardBody>
-          <Input defaultValue={name ?? ""} name="name" disabled={isPending} />
+          <Input defaultValue={name ?? ""} name="name" />
         </AccountCardBody>
         <AccountCardFooter description="64 characters maximum">
-          <Button disabled={isPending}>Update Name</Button>
+          <Submit />
         </AccountCardFooter>
       </form>
     </AccountCard>
   );
 }
+
+const Submit = () => {
+  const { pending } = useFormStatus();
+  return <Button disabled={pending}>Update Name</Button>;
+};

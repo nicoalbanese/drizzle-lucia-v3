@@ -2,34 +2,20 @@ import { AccountCard, AccountCardFooter, AccountCardBody } from "./AccountCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { updateUser } from "@/lib/actions/user";
+import { useFormState, useFormStatus } from "react-dom";
 
 export default function UpdateEmailCard({ email }: { email: string }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  const [state, formAction] = useFormState(updateUser, {
+    error: null,
+    success: null,
+  });
 
-  const handleSubmit = async (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    const target = event.target as HTMLFormElement;
-    const form = new FormData(target);
-    const { email } = Object.fromEntries(form.entries()) as { email: string };
-    if (email.length < 3) {
-      toast.error("Email must be longer than 3 characters.");
-      return;
-    }
-
-    startTransition(async () => {
-      const res = await fetch("/api/account", {
-        method: "PUT",
-        body: JSON.stringify({ email }),
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.status === 200)
-        toast.success("Successfully updated email!");
-      router.refresh();
-    });
-  };
+  useEffect(() => {
+    if (state.success == true) toast.success("Updated User");
+    if (state.error) toast.error("Error", { description: state.error });
+  }, [state]);
 
   return (
     <AccountCard
@@ -39,14 +25,19 @@ export default function UpdateEmailCard({ email }: { email: string }) {
           "Please enter the email address you want to use with your account.",
       }}
     >
-      <form onSubmit={handleSubmit}>
+      <form action={formAction}>
         <AccountCardBody>
-          <Input defaultValue={email ?? ""} name="email" disabled={isPending} />
+          <Input defaultValue={email ?? ""} name="email" />
         </AccountCardBody>
         <AccountCardFooter description="We will email vou to verify the change.">
-          <Button disabled={isPending}>Update Email</Button>
+          <Submit />
         </AccountCardFooter>
       </form>
     </AccountCard>
   );
 }
+
+const Submit = () => {
+  const { pending } = useFormStatus();
+  return <Button disabled={pending}>Update Email</Button>;
+};
