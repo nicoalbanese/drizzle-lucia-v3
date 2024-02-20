@@ -15,6 +15,20 @@
       "when": 1708379041306,
       "tag": "0001_peaceful_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1708426286243,
+      "tag": "0002_material_psynapse",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1708426797553,
+      "tag": "0003_harsh_kylun",
+      "breakpoints": true
     }
   ]
 }

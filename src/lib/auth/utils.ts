@@ -18,7 +18,8 @@ export const getUserAuth = async (): Promise<AuthSession> => {
     session: {
       user: {
         id: user?.id,
-        username: user?.username,
+        email: user?.email,
+        name: user?.name,
       },
     },
   };

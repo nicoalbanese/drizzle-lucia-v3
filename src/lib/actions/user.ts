@@ -1,29 +1,38 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
 import { ActionResult } from "next/dist/server/app-render/types";
 import { db } from "../db";
-import { users } from "../db/schema/auth";
 import { eq } from "drizzle-orm";
-import { Argon2id } from "oslo/password";
-import { cookies } from "next/headers";
-import { lucia, validateRequest } from "@/lib/auth/lucia";
-import { redirect } from "next/navigation";
-import { generateId } from "lucia";
+import { authenticationSchema, users } from "@/lib/db/schema/auth";
 
-export async function signin(
+import { lucia, validateRequest } from "@/lib/auth/lucia";
+import { Argon2id } from "oslo/password";
+import { type Cookie, generateId } from "lucia";
+
+const genericError = { error: "Error, please try again." };
+
+const updateCookie = (cookie: Cookie) => {
+  cookies().set(cookie.name, cookie.value, cookie.attributes);
+};
+
+const createSessionAndRedirect = async (userId: string) => {
+  const session = await lucia.createSession(userId, {});
+  const sessionCookie = lucia.createSessionCookie(session.id);
+  updateCookie(sessionCookie);
+  return redirect("/dashboard");
+};
+
+export async function signIn(
   _: any,
   formData: FormData,
 ): Promise<ActionResult> {
-  "use server";
-  const username = formData.get("username");
-  if (
-    typeof username !== "string" ||
-    username.length < 3 ||
-    username.length > 31 ||
-    !/^[a-z0-9_-]+$/.test(username)
-  ) {
+  const email = formData.get("email");
+  if (typeof email !== "string" || email.length < 3 || email.length > 31) {
     return {
-      error: "Invalid username",
+      error: "Invalid email",
     };
   }
   const password = formData.get("password");
@@ -40,17 +49,8 @@ export async function signin(
   const [existingUser] = await db
     .select()
     .from(users)
-    .where(eq(users.username, username.toLowerCase()));
+    .where(eq(users.email, email.toLowerCase()));
   if (!existingUser) {
-    // NOTE:
-    // Returning immediately allows malicious actors to figure out valid usernames from response times,
-    // allowing them to only focus on guessing passwords in brute-force attacks.
-    // As a preventive measure, you may want to hash passwords even for invalid usernames.
-    // However, valid usernames can be already be revealed with the signup page among other methods.
-    // It will also be much more resource intensive.
-    // Since protecting against this is none-trivial,
-    // it is crucial your implementation is protected against brute-force attacks with login throttling etc.
-    // If usernames are public, you may outright tell the user that the username is invalid.
     return {
       error: "Incorrect username or password",
     };
@@ -65,77 +65,44 @@ export async function signin(
       error: "Incorrect username or password",
     };
   }
-
-  const session = await lucia.createSession(existingUser.id, {});
-  const sessionCookie = lucia.createSessionCookie(session.id);
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes,
-  );
-  return redirect("/dashboard");
+  createSessionAndRedirect(existingUser.id);
 }
 
-export async function signup(
+export async function signUp(
   _: any,
   formData: FormData,
 ): Promise<ActionResult> {
-  const username = formData.get("username");
-  // username must be between 4 ~ 31 characters, and only consists of lowercase letters, 0-9, -, and _
-  // keep in mind some database (e.g. mysql) are case insensitive
-  if (
-    typeof username !== "string" ||
-    username.length < 3 ||
-    username.length > 31 ||
-    !/^[a-z0-9_-]+$/.test(username)
-  ) {
-    return {
-      error: "Invalid username",
-    };
-  }
+  const email = formData.get("email");
   const password = formData.get("password");
-  if (
-    typeof password !== "string" ||
-    password.length < 6 ||
-    password.length > 255
-  ) {
-    return {
-      error: "Invalid password",
-    };
+  const result = authenticationSchema.safeParse({ email, password });
+
+  if (!result.success) {
+    const errors = result.error.flatten().fieldErrors;
+    if (errors.email) return { error: "Invalid Email" };
+    if (errors.password)
+      return { error: "Invalid Password - " + errors.password[0] };
+    return genericError;
   }
 
-  const hashedPassword = await new Argon2id().hash(password);
+  const payload = result.data;
+  const hashedPassword = await new Argon2id().hash(payload.password);
   const userId = generateId(15);
 
-  // TODO: check if username is already used
   try {
     await db.insert(users).values({
       id: userId,
-      username,
+      email: payload.email,
       hashedPassword,
     });
   } catch (e) {
-    const unknownError = { error: "Error, try again." };
-    if (e instanceof Error) {
-      if (e.message.includes("UNIQUE"))
-        return { error: "Username already exists." };
-    } else {
-      return unknownError;
-    }
-    return unknownError;
+    return e instanceof Error && e.message.includes("UNIQUE")
+      ? { error: "Username already exists." }
+      : genericError;
   }
-
-  const session = await lucia.createSession(userId, {});
-  const sessionCookie = lucia.createSessionCookie(session.id);
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes,
-  );
-  return redirect("/dashboard");
+  createSessionAndRedirect(userId);
 }
 
-export async function signout(): Promise<ActionResult> {
+export async function signOut(): Promise<ActionResult> {
   const { session } = await validateRequest();
   if (!session) {
     return {
@@ -143,13 +110,12 @@ export async function signout(): Promise<ActionResult> {
     };
   }
 
-  await lucia.invalidateSession(session.id);
-
+  try {
+    await lucia.invalidateSession(session.id);
+  } catch (e) {
+    return genericError;
+  }
   const sessionCookie = lucia.createBlankSessionCookie();
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes,
-  );
+  updateCookie(sessionCookie);
   return redirect("/sign-in");
 }

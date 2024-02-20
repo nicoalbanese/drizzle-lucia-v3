@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signup } from "@/lib/actions/user";
+import { signUp } from "@/lib/actions/user";
 import { Button } from "@/components/ui/button";
 import { useFormState, useFormStatus } from "react-dom";
 
-const Page = () => {
-  const [state, formAction] = useFormState(signup, { error: null });
+export default function SignUpPage() {
+  const [state, formAction] = useFormState(signUp, { error: null });
 
   return (
     <main className="max-w-lg mx-auto my-4 bg-popover p-10">
@@ -20,10 +20,10 @@ const Page = () => {
         </div>
       ) : null}
       <form action={formAction}>
-        <Label htmlFor="username" className="text-muted-foreground">
-          Username
+        <Label htmlFor="email" className="text-muted-foreground">
+          Email
         </Label>
-        <Input name="username" id="username" />
+        <Input name="email" id="email" type="email" />
         <br />
         <Label htmlFor="password" className="text-muted-foreground">
           Password
@@ -40,9 +40,7 @@ const Page = () => {
       </div>
     </main>
   );
-};
-
-export default Page;
+}
 
 const Submit = () => {
   const { pending } = useFormStatus();

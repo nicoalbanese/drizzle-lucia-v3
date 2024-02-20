@@ -1,11 +1,12 @@
 "use client";
-import { signout } from "@/lib/actions/user";
+
+import { signOut } from "@/lib/actions/user";
 import { Button } from "../ui/button";
 import { useFormStatus } from "react-dom";
 
 export default function SignOutBtn() {
   return (
-    <form action={signout} className="w-full text-left">
+    <form action={signOut} className="w-full text-left">
       <Btn />
     </form>
   );
